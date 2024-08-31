@@ -17,15 +17,9 @@ USE AdventureWorks2022;
 
 
 
-/* Q1: Find the top 10 customers with the highest total sales. Include their total order count and average order value.
-
-Use tables [Sales].[SalesOrderHeader], [Sales].[Customer] and [Person].[Person] to find the customer names.
-
-Since joining multiple tables takes a long time about (2 minutes), I applied optimized query to get the results.
-
-
+/*
+Q1: Find the top 10 customers with the highest total sales. Include their total order count and average order value.
 */
-
 -- Created a temp table #CustomerDetails with 4 columns
 CREATE TABLE #CustomerDetails
 (
@@ -43,7 +37,6 @@ CustomerID,
 CustomerName,
 TotalDue
 )
-
 SELECT [SalesOrderID], 
 	c.[CustomerID],
 	CustomerName = p.FirstName + ' ' + p.[LastName],
@@ -68,12 +61,17 @@ GROUP BY
 ORDER BY 
 	SUM([TotalDue]) DESC;
 
+-- Dropping the Temp Table
 DROP TABLE #CustomerDetails;
+
+
 
 /*
 Q2: Which product categories have seen the highest growth in sales year over year?
+*/
 
-
+/*
+-- APPROACH 1: Using Subquery
 Steps taken:
 1. Wrote an inner query that joins 4 tables to access to the Category column and find their LineTotal for each year
 		a) Found the year from ModifiedDate using YEAR Function
@@ -85,7 +83,6 @@ Steps taken:
 4. Showed the data in descending order of YoYGrowth.
 
 */
--- APPROACH 1: Using Subquery
 SELECT Category	-- Outer Query
 	, OrderYear
 	, PrevYear = LAG(OrderYear, 1) OVER(PARTITION BY Category ORDER BY OrderYear)
@@ -112,14 +109,12 @@ FROM
 ORDER BY 
 	6 DESC;
 
--- APPROACH 2: Using Common Table Expression
 
 /*
+Approach 2: Using Common Table Expression(CTE)
 
-Approach 2: Using CTE
-
-1. In the first CTE 'LineTotals', joined the [SalesOrderDetail] table with 
-  [Product], [ProductSubcategory] and [ProductCategory] tables to access to the 'Category' column
+1. In the first CTE 'LineTotals', joined the [SalesOrderDetail] table with   [Product], [ProductSubcategory] and 
+   [ProductCategory] tables to access to the 'Category' column
 
 2. Here I selected these columns:
     a) Category
@@ -127,19 +122,15 @@ Approach 2: Using CTE
     c) LineTotal : Using an window function calculated the Sum of LineTotal 
                    for each category. Used CAST() to round the number to 2 decimal points.
 
-3. In the second CTE, in addition to the 3 columns, I created 2 new columns 
-   'PrevYear' and 'PrevYearSales' using LAG() window function 
+3. In the second CTE, in addition to the 3 columns, I created 2 new columns 'PrevYear' and 'PrevYearSales' using LAG() window function 
 
-4. Finally calculated the YoYGrowth using the formula 
-  (Current Year Sales - Prev year sales ) * 100 / Previous Year Sales
+4. Finally calculated the YoYGrowth using the formula:(Current Year Sales - Prev year sales ) * 100 / Previous Year Sales
 
-5. In the final query, filtered the data to show only categories with positive
-  YoYGrowth.
+5. In the final query, filtered the data to show only categories with positive YoYGrowth.
 
 */
 
-
-WITH LineTotals AS 
+WITH LineTotals AS -- CTE 1
 (
 SELECT DISTINCT 
 				Category = C.Name
@@ -154,7 +145,8 @@ LEFT JOIN
 LEFT JOIN 
 				[Production].[ProductCategory] C ON C.ProductCategoryID = SC.ProductCategoryID
 ),
-Categories AS
+
+Categories AS -- CTE 2
 (
 SELECT Category
 	, OrderYear
@@ -166,7 +158,8 @@ SELECT Category
 FROM 
 	LineTotals
 ) 
-SELECT Category, 
+	
+SELECT Category, -- Final Query
 	OrderYear, 
 	PrevYear, 
 	YoYGrowth
@@ -175,41 +168,16 @@ FROM
 WHERE 
 	YoYGrowth > 0
 ORDER BY 
-	YoYGrowth DESC, OrderYear 
-
--- APPROACH 3: Using PIVOT()
-
-SELECT *
-FROM 
-(
-		SELECT DISTINCT 
-				Category = C.Name
-				,OrderYear = YEAR(D.[ModifiedDate])
-				,LineTotal = D.[LineTotal]
-		FROM 
-				[Sales].[SalesOrderDetail] D
-		LEFT JOIN 
-				[Production].[Product] P ON P.ProductID = D.ProductID
-		LEFT JOIN 
-				[Production].[ProductSubcategory] SC ON SC.ProductSubcategoryID = P.ProductSubcategoryID
-		LEFT JOIN 
-				[Production].[ProductCategory] C ON C.ProductCategoryID = SC.ProductCategoryID
-
-) c
-PIVOT(
-SUM(LineTotal)
-FOR Category IN([Accessories],[Bikes],[Clothing],[Components])
-) F
-
-ORDER BY 1;
+	YoYGrowth DESC, OrderYear;
 
 
 
 /*
 Q3: Identify the top 5 salespersons based on total sales. Additionally, calculate the percentage of the total company sales each contributed.
+*/
 
-
-Steps taken: 
+/*
+Steps: 
 1. Created a CTE SalesPersonDetails which joins [SalesOrderHeader] and [Person] tables with [SalesPersonQuotaHistory] table.
 2. Here added these columns:
 		- SalesPerson
@@ -236,8 +204,8 @@ LEFT JOIN
 )
 
 SELECT TOP 5 SalesPerson
-		, [% Contribution] = CAST([% Contribution] AS NUMERIC(36,2))
-		, Ranking = ROW_NUMBER() OVER(ORDER BY [% Contribution] DESC)
+	, [% Contribution] = CAST([% Contribution] AS NUMERIC(36,2))
+	, Ranking = ROW_NUMBER() OVER(ORDER BY [% Contribution] DESC)
 FROM 
 	SalesPersonDetails
 ORDER BY 3;
@@ -246,10 +214,8 @@ ORDER BY 3;
 
 
 /*
-Q4: Determine which products have not been sold in the last 6 months. Also, provide the current inventory level for these products.
-
-Create two temp tables and then using EXCEPT command find out the products that were not sold in the last 6 months
-
+Q4: Determine which products have not been sold in the last 6 months. Also, provide the current inventory level 
+for these products.
 */
 
 -- Temp table 1: List of Products sold in past 6 months 
@@ -259,12 +225,11 @@ CREATE TABLE #ProductsSold
 ProductID INT
 ,ProductName VARCHAR(50)
 )
-
+-- Inserting values in the Temp Table 1
 INSERT INTO #ProductsSold
 (ProductID
 ,ProductName 
 )
-
 SELECT DISTINCT ProductID = D.ProductID, 
 		ProductName = P.Name
 FROM 
@@ -276,7 +241,6 @@ JOIN
 WHERE 
 		[OrderDate] >= DATEADD(DAY, -180, '2014-06-30'); -- 2014-06-30 is the last date of order in the database 
 
-select * from #ProductsSold
 -- Temp table 2: All the products from the product table
 
 CREATE TABLE #Allproducts 
@@ -286,23 +250,21 @@ ProductID INT
 ,OrderQuantity INT
 )
 
-
+-- Inserting values in the Temp Table 2
 INSERT INTO #Allproducts 
 (
 ProductID 
 ,ProductName
 )
-
-(
-SELECT 
-DISTINCT [ProductID], 
-		[Name]
+SELECT DISTINCT [ProductID], 
+	[Name]
 FROM [Production].[Product]
-)
-select * from #Allproducts
--- Using EXCEPT() selected only those products that weren't sold in last 6 months
--- Transformed the query into a CTE ProductsNotSold and Left Joined it with [Production].[ProductInventory] table to get the inventory label for each product
 
+/*	
+Final Query : Using EXCEPT() selected only those products that weren't sold in last 6 months
+Transformed the query into a CTE ProductsNotSold and Left Joined it with [Production].[ProductInventory] table to
+get the inventory label for each product
+*/
 With ProductsNotSold AS
 (
 SELECT 
@@ -320,8 +282,8 @@ FROM
 	#ProductsSold
 )
 SELECT S.ProductID, 
-		S.ProductName,
-		Quantity = SUM(I.Quantity)
+	S.ProductName,
+	Quantity = SUM(I.Quantity)
 FROM 
 	ProductsNotSold S
 LEFT JOIN 
@@ -338,26 +300,30 @@ DROP TABLE #Allproducts;
 
 
 /*
-Q5: List suppliers who have provided more than 5 different products. For each, calculate the average price of products supplied.
+Q5: List suppliers who have provided more than 5 different products. For each, calculate the average price of 
+products supplied.
 
+Steps:
+1. In the Inner Subquery, calculated product count and average price of products for each vendor
+2. From the Outer Query, selected only those vendors with a product count > 5
 */
 
-SELECT DISTINCT VendorName, 
+SELECT DISTINCT VendorName, -- Outer Query
 	ProductCount, 
 	AveragePrice
-FROM (
-			
-			SELECT 
-			PV.[BusinessEntityID],
-			VendorName = V.Name,
-			ProductCount = COUNT(DISTINCT [ProductID]),
-			AveragePrice = CAST(AVG([StandardPrice]) AS NUMERIC(36, 2))
-      
-			FROM [AdventureWorks2022].[Purchasing].[ProductVendor] PV
-
-			JOIN [Purchasing].[Vendor] V ON V.BusinessEntityID = PV.BusinessEntityID
-
-			GROUP BY PV.[BusinessEntityID], V.Name
+FROM ( 
+	-- Inner Query		
+		SELECT 
+		PV.[BusinessEntityID],
+		VendorName = V.Name,
+		ProductCount = COUNT(DISTINCT [ProductID]),
+		AveragePrice = CAST(AVG([StandardPrice]) AS NUMERIC(36, 2))
+		
+		FROM [AdventureWorks2022].[Purchasing].[ProductVendor] PV
+		
+		JOIN [Purchasing].[Vendor] V ON V.BusinessEntityID = PV.BusinessEntityID
+		
+		GROUP BY PV.[BusinessEntityID], V.Name
 ) c
 
 WHERE 
@@ -369,16 +335,20 @@ ORDER BY
 
 
 /*
+Q6: Analyze monthly sales trends over the past 4 years and identify any seasonal patterns. Group the results by year 
+and month.
 
-Q6: Analyze monthly sales trends over the past 4 years and identify any seasonal patterns. Group the results by year and month.
-
+Steps:
+1. Created a CTE Sales with OrderYear, OrderMonth and Monthly Sales Value
+2. In the final query leveraged LEAD(), CASE WHEN () and ROWS BETWEEN () functions to calculate new columns
+3. Used CAST() function to displayed the results upto 2 decimal points
 */
 
 WITH Sales AS
 (
 SELECT OrderYear = YEAR([OrderDate])
-		,OrderMonth = MONTH([OrderDate])
-		,TotalSales = SUM([TotalDue])
+	,OrderMonth = MONTH([OrderDate])
+	,TotalSales = SUM([TotalDue])
 FROM
 	[Sales].[SalesOrderHeader]
 GROUP BY 
@@ -418,45 +388,46 @@ ORDER BY
 
 
 /*
-
-Q8: Identify customers who made their first purchase more than 2 years ago but haven’t made any purchases in the last year. Calculate the total value of their past purchases.
-
+Q8: Identify customers who made their first purchase more than 2 years ago but haven't made any purchases in the last year. Calculate the total value of their past purchases.
 */
 
 WITH CustomerOrders AS 
 (
     SELECT 
         [CustomerID],
-		FirstOrderDate = CAST(MIN([OrderDate]) OVER(PARTITION BY [CustomerID]) AS DATE),
+	FirstOrderDate = CAST(MIN([OrderDate]) OVER(PARTITION BY [CustomerID]) AS DATE),
         LastOrderDate = CAST(MAX([OrderDate]) OVER(PARTITION BY [CustomerID]) AS DATE),
-		LastOrderDateOverall = CAST(MAX([OrderDate]) OVER() AS DATE),
+	LastOrderDateOverall = CAST(MAX([OrderDate]) OVER() AS DATE),
         TotalOrderValue = SUM([TotalDue]) OVER(PARTITION BY [CustomerID])
     FROM [Sales].[SalesOrderHeader]
 )
 SELECT 
-    Customer = P.FirstName + ' ' + P.LastName,
+    	Customer = P.FirstName + ' ' + P.LastName,
 	LastOrderDateOverall,
-    FirstOrderDate,
-    LastOrderDate,
-    TotalOrderValue
+    	FirstOrderDate,
+    	LastOrderDate,
+    	TotalOrderValue
 FROM 
 	CustomerOrders CO
 JOIN 
 	[Person].[Person] P ON P.BusinessEntityID = CO.CustomerID
 WHERE 
-    FirstOrderDate < DATEADD(year, -2,LastOrderDateOverall ) -- Customers who made their first purchase more than 2 years ago
-    AND LastOrderDate < DATEADD(year, -1, LastOrderDateOverall) -- But haven't made any purchases in the last year
+    	FirstOrderDate < DATEADD(year, -2,LastOrderDateOverall ) -- Customers who made their first purchase more than 2 years ago
+    	AND LastOrderDate < DATEADD(year, -1, LastOrderDateOverall) -- But haven't made any purchases in the last year
 GROUP BY 
-    P.FirstName, P.LastName, CO.FirstOrderDate, CO.LastOrderDate, CO.TotalOrderValue, CO.LastOrderDateOverall
+    	P.FirstName, P.LastName, CO.FirstOrderDate, CO.LastOrderDate, CO.TotalOrderValue, CO.LastOrderDateOverall
 ORDER BY 
-    LastOrderDate DESC;
+    	LastOrderDate DESC;
 
 
--- 9. Identify the top 3 salespersons in each territory based on SalesYTD. If there's a tie, use SalesLastYear as the tiebreaker.
+
+/*
+9. Identify the top 3 salespersons in each territory based on SalesYTD.
+*/
 
 SELECT SalesPerson = P.FirstName + ' '  + P.LastName
-	,Territory = T.[Name]
-	,S.[SalesYTD]
+	, Territory = T.[Name]
+	, S.[SalesYTD]
 	, OverallRank = ROW_NUMBER () OVER(ORDER BY S.[SalesYTD] DESC)
 	, RankInTerritory = RANK() OVER(PARTITION BY T.[Name] ORDER BY S.[SalesYTD] DESC)
 FROM 
@@ -472,56 +443,75 @@ ORDER BY
 
 
 
+/*
+10. Calculate the percentage of SalesQuota achieved by each salesperson. Identify salespersons who have exceeded 
+their quota by more than 20%.
+*/
 
---10. Calculate the percentage of SalesQuota achieved by each salesperson. Identify salespersons who have exceeded their quota by more than 20%.
+/*
+Steps: 
+1. In the CTE, selected the salesperson, their SalasYTD and SalesQuota from SalesPerson table. In case of 0 sales quota,
+   I replaced them with the average sales quota using a subquery in the COALESCE function.
+2. In the final query, calculated % quota by dividing SalesYTD with their respective SalesQuota
+3. Filtered the saleserson with % quote greater than 120 (which represents 20%) 
 
-WITH SalesPersonDetails AS
+*/
+WITH SalesPersonDetails AS -- CTE
 (
-SELECT SalesPerson = P.FirstName + ' '  + P.LastName
-	, SalesYTD = CAST([SalesYTD] AS NUMERIC(36,2)) 
-	, SalesQuota = CAST(COALESCE([SalesQuota],(SELECT AVG([SalesQuota]) FROM [Sales].[SalesPerson])) AS NUMERIC(36,2)) -- Replacing the Null values in sales quota with the average sales quota
-FROM 
-	[Sales].[SalesPerson] S
-LEFT JOIN 
-	[Person].[Person] P ON S.[BusinessEntityID] = P.[BusinessEntityID]
+	SELECT SalesPerson = P.FirstName + ' '  + P.LastName
+		, SalesYTD = CAST([SalesYTD] AS NUMERIC(36,2)) 
+		, SalesQuota = CAST(COALESCE([SalesQuota],(SELECT AVG([SalesQuota]) FROM [Sales].[SalesPerson])) AS NUMERIC(36,2)) -- Replacing the Null values in sales quota with the average sales quota
+	FROM 
+		[Sales].[SalesPerson] S
+	LEFT JOIN 
+		[Person].[Person] P ON S.[BusinessEntityID] = P.[BusinessEntityID]
 )
-SELECT SalesPerson
+SELECT SalesPerson -- Final query
 	, [% Quota] = SalesYTD * 100.0 / SalesQuota
 FROM 
 	SalesPersonDetails
 WHERE 
 	SalesYTD * 100.0 / SalesQuota > 120 -- Filtering for salesperson who exceeded their quota by 20%.
 ORDER BY 
-	2 DESC
+	2 DESC;
 
 
 
+/*
+11. Calculate the year-over-year growth percentage for each salesperson based on SalesLastYear and SalesYTD. Identify those with the highest and lowest growth.
 
--- 11. Calculate the year-over-year growth percentage for each salesperson based on SalesLastYear and SalesYTD. Identify those with the highest and lowest growth.
-
--- YoY Change Formula = (Current Year Sale / last Year Sale - 1) * 100.0
--- In case of 0 division error, flagged those records by -99.
-
+YoY Change Formula = (Current Year Sale / last Year Sale - 1) * 100.0
+In case of 0 division error, flag those records by -99.
+*/
 
 SELECT SalesPerson = P.FirstName + ' '  + P.LastName
 	, SalesYTD = CAST([SalesYTD] AS NUMERIC(36,2))
 	, SalesLastYear = CAST([SalesLastYear] AS NUMERIC(36,2))
-	, [% YoY Change] = CAST((CASE WHEN [SalesLastYear] <> 0 THEN (([SalesYTD]/[SalesLastYear] -1) * 100.00) ELSE -99 END) AS NUMERIC(36,2))
+	, [% YoY Change] = CAST((CASE 
+				WHEN [SalesLastYear] <> 0 THEN (([SalesYTD]/[SalesLastYear] -1) * 100.00) 
+				ELSE -99 
+			   END) AS NUMERIC(36,2))
 FROM 
 	[Sales].[SalesPerson] S
 LEFT JOIN 
 	[Person].[Person] P ON S.[BusinessEntityID] = P.[BusinessEntityID]
-ORDER BY 4 DESC;
+ORDER BY 
+	4 DESC;
 
 
 
-
--- 12. Create a composite ranking system for salespersons that considers SalesYTD, SalesQuota, and Bonus. Rank salespersons by their overall performance score.
 /* 
+12. Create a composite ranking system for salespersons that considers SalesYTD, SalesQuota, and Bonus. Rank salespersons by their overall performance score.
+*/
+
+/*
 Steps:
-1. Normalizing Metrics: SalesYTD and Bonus are used directly, while SalesQuota is normalized by calculating the ratio SalesYTD / SalesQuota.
-2. Composite Score: This is calculated by multiplying SalesYTD, Quota Achievement, and Bonus. This formula assumes that a higher score in all three areas is better.
-3. Ranking: The RANK() function is used to assign a rank based on the composite score, where a higher score results in a better rank.
+1. Normalizing Metrics: SalesYTD and Bonus are used directly, while SalesQuota is normalized by calculating the
+   ratio SalesYTD / SalesQuota.
+2. Composite Score: This is calculated by multiplying SalesYTD, Quota Achievement, and Bonus. This formula 
+   assumes that a higher score in all three areas is better.
+3. Ranking: The RANK() function is used to assign a rank based on the composite score, where a higher score 
+   results in a better rank.
 */
 
 WITH SalesPersonDetails AS
@@ -551,8 +541,12 @@ ORDER BY
 
 
 /*
-Q9: Break down the total revenue by product category and sales region for the current year. Display the percentage contribution of each category within each region.
+Q13: Break down the total revenue by product category and sales region for the current year. Display the percentage 
+contribution of each category within each region.
+*/
 
+
+/*
 STEPS:
 1. In first CTE, I joined several tables to find the ProductCategory, SalesRegion and Total LineTotals for the most current year 2014.
 
