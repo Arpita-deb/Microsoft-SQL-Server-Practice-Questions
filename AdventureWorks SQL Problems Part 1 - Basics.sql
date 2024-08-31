@@ -102,7 +102,7 @@ WHERE
 
 SELECT COUNT(*)
 FROM [Sales].[SalesOrderDetail]
-WHERE [UnitPrice] > 1000
+WHERE [UnitPrice] > 1000;
 
 
 
@@ -188,6 +188,7 @@ FROM
 		FROM [AdventureWorks2022].[Sales].[SalesOrderDetail]
 		WHERE [OrderQty] = 1
 ) C
+;
 
 
 
@@ -235,7 +236,7 @@ JOIN
 JOIN 
 	[Production].[Product] P ON MC.ProductModelID = P.ProductModelID
 WHERE 
-	C.CultureID = 'fr' AND P.ProductID = 736 
+	C.CultureID = 'fr' AND P.ProductID = 736 ;
 
 
 
@@ -284,7 +285,7 @@ JOIN
 JOIN 
 	[Production].[Product] P ON P.[ProductID] = D.[ProductID]
 GROUP BY 
-	H.[SalesOrderID]
+	H.[SalesOrderID];
 
 
 /*
