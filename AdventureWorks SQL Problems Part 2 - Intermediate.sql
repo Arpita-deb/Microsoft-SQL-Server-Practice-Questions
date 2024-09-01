@@ -422,7 +422,7 @@ ORDER BY
 
 
 /*
-9. Identify the top 3 salespersons in each territory based on SalesYTD.
+9. Rank the salespersons based on Sales YTD. Also rank the salesperson for each Territory
 */
 
 SELECT SalesPerson = P.FirstName + ' '  + P.LastName
