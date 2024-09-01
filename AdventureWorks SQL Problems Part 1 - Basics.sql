@@ -100,35 +100,38 @@ WHERE
 
 -- 5. How many items with ListPrice more than $1000 have been sold?
 
-SELECT CountOfItems = COUNT(*) 
-FROM [Sales].[SalesOrderDetail]
-WHERE [UnitPrice] > 1000
+SELECT 
+	CountOfItems = COUNT(*) 
+FROM 
+	[Sales].[SalesOrderDetail]
+WHERE 
+	[UnitPrice] > 1000
 
 
 
 -- 6. Give the Store names of those customers with orders over $100000. Include the subtotal plus tax plus freight.
 
 SELECT Store,
-TotalDue = CAST(Subtotal + Tax + Freight AS NUMERIC(36,2)),
-PercentTax = FORMAT(Tax / (Subtotal + Tax + Freight), 'p'),
-PercentFreight = FORMAT(Freight/(Subtotal + Tax + Freight), 'p')
+	TotalDue = CAST(Subtotal + Tax + Freight AS NUMERIC(36,2)),
+	PercentTax = FORMAT(Tax / (Subtotal + Tax + Freight), 'p'),
+	PercentFreight = FORMAT(Freight/(Subtotal + Tax + Freight), 'p')
 FROM
 (
-		SELECT 
-			Store =	S.Name,
-			Subtotal = SUM([SubTotal]), 
-			Tax = SUM([TaxAmt]), 
-			Freight = SUM([Freight])
-		FROM 
-			[Sales].[SalesOrderHeader] H
-		JOIN 
-			[Sales].[Customer] C ON H.CustomerID = C.CustomerID
-		JOIN 
-			[Sales].[Store] S ON C.StoreID = S.BusinessEntityID
-		WHERE 
-			[TotalDue] > 100000
-		GROUP BY 
-			S.Name
+	SELECT 
+		Store =	S.Name,
+		Subtotal = SUM([SubTotal]), 
+		Tax = SUM([TaxAmt]), 
+		Freight = SUM([Freight])
+	FROM 
+		[Sales].[SalesOrderHeader] H
+	JOIN 
+		[Sales].[Customer] C ON H.CustomerID = C.CustomerID
+	JOIN 
+		[Sales].[Store] S ON C.StoreID = S.BusinessEntityID
+	WHERE 
+		[TotalDue] > 100000
+	GROUP BY 
+		S.Name
 ) S
 ORDER BY 1;
 
@@ -138,29 +141,29 @@ ORDER BY 1;
 
 WITH Orders AS
 (
-		SELECT [ProductID], 
-				OrderQuantity = SUM([OrderQty])
-		FROM 
-			[Sales].[SalesOrderDetail] D
-		JOIN 
-			[Sales].[SalesOrderHeader] H ON D.SalesOrderID = H.SalesOrderID
-		JOIN 
-			[Sales].[Customer] C ON H.CustomerID = C.CustomerID
-		JOIN 
-			[Sales].[Store] S ON S.BusinessEntityID = C.StoreID
-		WHERE 
-			S.[Name] = 'Riding Cycles'
-		GROUP BY 
-			[ProductID]
+	SELECT [ProductID], 
+			OrderQuantity = SUM([OrderQty])
+	FROM 
+		[Sales].[SalesOrderDetail] D
+	JOIN 
+		[Sales].[SalesOrderHeader] H ON D.SalesOrderID = H.SalesOrderID
+	JOIN 
+		[Sales].[Customer] C ON H.CustomerID = C.CustomerID
+	JOIN 
+		[Sales].[Store] S ON S.BusinessEntityID = C.StoreID
+	WHERE 
+		S.[Name] = 'Riding Cycles'
+	GROUP BY 
+		[ProductID]
 ),
 Products AS
 (
-		SELECT [ProductID], 
-			Product = [Name]
-		FROM 
-			[Production].[Product]
-		WHERE 
-			[Name] = 'Racing Socks, L'
+	SELECT [ProductID], 
+		Product = [Name]
+	FROM 
+		[Production].[Product]
+	WHERE 
+		[Name] = 'Racing Socks, L'
 )
 SELECT Product, 
 	OrderQuantity
@@ -176,17 +179,17 @@ JOIN
 -- Also include the number of SingleItemOrders per SalesOrderID.
 
 SELECT [SalesOrderID]
-		, SalesOrderDetailID
-		, SingleItemOrders = COUNT([SalesOrderID]) OVER(PARTITION BY [SalesOrderID])
-		, UnitPrice
+	, SalesOrderDetailID
+	, SingleItemOrders = COUNT([SalesOrderID]) OVER(PARTITION BY [SalesOrderID])
+	, UnitPrice
 FROM
 (
-		SELECT [SalesOrderID]
-			   ,[SalesOrderDetailID]
-			   ,[UnitPrice]
+	SELECT [SalesOrderID]
+		   ,[SalesOrderDetailID]
+		   ,[UnitPrice]
 
-		FROM [AdventureWorks2022].[Sales].[SalesOrderDetail]
-		WHERE [OrderQty] = 1
+	FROM [AdventureWorks2022].[Sales].[SalesOrderDetail]
+	WHERE [OrderQty] = 1
 ) C;
 
 
@@ -195,11 +198,11 @@ FROM
 -- Add a derived column which gives the total quantity of socks per order.
 
 SELECT D.[SalesOrderID], 
-		[SalesOrderDetailID], 
-		CustomerName = PR.FirstName + ' ' + PR.LastName,
-		StoreName = S.Name, 
-		ProductName = P.Name,
-		Quantity = SUM([OrderQty]) OVER(PARTITION BY D.[SalesOrderID], [SalesOrderDetailID])
+	[SalesOrderDetailID], 
+	CustomerName = PR.FirstName + ' ' + PR.LastName,
+	StoreName = S.Name, 
+	ProductName = P.Name,
+	Quantity = SUM([OrderQty]) OVER(PARTITION BY D.[SalesOrderID], [SalesOrderDetailID])
 FROM 
 	[Sales].[SalesOrderDetail] D
 JOIN 
@@ -253,21 +256,23 @@ WHERE
 */
 
 SELECT OrderRange
-		, TotalValue = CAST(SUM(TotalValue) AS NUMERIC(36,2))
-		, OrderCount = COUNT([SalesOrderID])
+	, TotalValue = CAST(SUM(TotalValue) AS NUMERIC(36,2))
+	, OrderCount = COUNT([SalesOrderID])
 FROM 
 (
-		SELECT [SalesOrderID]
+	SELECT [SalesOrderID]
 		, TotalValue = SUM([TotalDue])
 		, OrderRange = (CASE 
-								WHEN SUM([TotalDue]) <100 THEN '0 - 99'
-								WHEN SUM([TotalDue]) <1000 THEN '100 - 999'
-								WHEN SUM([TotalDue]) <10000 THEN '1000 - 9999'
-								ELSE '10000 - '
-							END)
-		FROM [Sales].[SalesOrderHeader]
-		GROUP BY [SalesOrderID]
-		) C
+					WHEN SUM([TotalDue]) <100 THEN '0 - 99'
+					WHEN SUM([TotalDue]) <1000 THEN '100 - 999'
+					WHEN SUM([TotalDue]) <10000 THEN '1000 - 9999'
+					ELSE '10000 - '
+				END)
+	FROM 
+		[Sales].[SalesOrderHeader]
+	GROUP BY 
+		[SalesOrderID]
+) C
 GROUP BY 
 	OrderRange
 ORDER BY 
@@ -330,13 +335,13 @@ JOIN
 	[Sales].[Customer] C ON H.CustomerID = C.CustomerID
 )
 SELECT CustomerID, 
-		SalesOrderID,
-		CustomerType = CASE 
-						WHEN TotalDue < 1000 THEN 'Bronze'
-						WHEN TotalDue < 4999 THEN 'Silver'
-						WHEN TotalDue < 9999 THEN 'Gold'
-						ELSE 'Diamond'
-					END
+	SalesOrderID,
+	CustomerType = (CASE 
+				WHEN TotalDue < 1000 THEN 'Bronze'
+				WHEN TotalDue < 4999 THEN 'Silver'
+				WHEN TotalDue < 9999 THEN 'Gold'
+				ELSE 'Diamond'
+			END)
 FROM 
 	TotalSales
 ORDER BY 
@@ -430,10 +435,10 @@ JOIN
 -- Final Query showing Store Names and their address
 SELECT * 
 FROM #StoresWithAddress
-ORDER BY CASE  
+ORDER BY (CASE  
             WHEN LOWER([Name]) LIKE '%bike%' THEN 1 -- This ensures that the 'bike's are listed before the 'cycles's
             ELSE 2
-         END,
+         END),
          [Name] ASC;
 
 
@@ -442,10 +447,10 @@ ORDER BY CASE
 
 
 SELECT H.[SalesOrderID],
-		Store = S.Name,
-		Subtotal = SUM([SubTotal]),
-		ProductWeight = SUM(P.Weight),
-		ProductWeightUnit = [WeightUnitMeasureCode]
+	Store = S.Name,
+	Subtotal = SUM([SubTotal]),
+	ProductWeight = SUM(P.Weight),
+	ProductWeightUnit = [WeightUnitMeasureCode]
 FROM 
 	[Sales].[SalesOrderHeader] H
 JOIN 
